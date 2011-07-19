@@ -17,7 +17,7 @@
       this.API_BASE = 'grooveshark.com';
       this.UUID = 'A3B724BA-14F5-4932-98B8-8D375F85F266';
       this.CLIENT = 'htmlshark';
-      this.CLIENT_REV = '20110606.04';
+      this.CLIENT_REV = '20110606';
       this.COUNTRY = {
         CC2: '0',
         IPR: '353',
@@ -27,8 +27,15 @@
         ID: '223'
       };
       this.TOKEN_TTL = 120;
+      this.SALT = 'backToTheScienceLab';
       this.METHOD_CLIENTS = {
         getStreamKeyFromSongIDEx: 'jsqueue'
+      };
+      this.METHOD_SALTS = {
+        getStreamKeyFromSongIDEx: 'bewareOfBearsharktopus'
+      };
+      this.METHOD_CLIENT_REVS = {
+        getStreamKeyFromSongIDEx: '20110606.04'
       };
       this.session = null;
       this.commToken = null;
@@ -51,9 +58,8 @@
     Grooveshark.prototype.getCommToken = function(callback) {
       var params, self;
       self = this;
-      this.secretKey = Hash.md5(this.session);
       params = {
-        secretKey: this.secretKey
+        secretKey: Hash.md5(this.session)
       };
       return this.request('getCommunicationToken', params, true, function(data) {
         self.commToken = data.result;
@@ -62,10 +68,12 @@
       });
     };
     Grooveshark.prototype.createToken = function(method) {
-      var hash, plain, rnd;
+      var hash, plain, rnd, salt;
       rnd = this.genHex();
-      plain = method + ':' + this.commToken + ':' + 'bewareOfBearsharktopus' + ':' + rnd;
-      console.log(plain);
+      if (this.METHOD_SALTS[method] || this.SALT) {
+        salt = this.METHOD_SALTS[method];
+      }
+      plain = method + ':' + this.commToken + ':' + salt + ':' + rnd;
       hash = Hash.sha1(plain);
       return rnd + hash;
     };
@@ -80,7 +88,7 @@
       return item;
     };
     Grooveshark.prototype.request = function(method, params, secure, callback) {
-      var agent, body, h, options, path, port, postData, req, self;
+      var body, client, h, options, path, port, postData, req, self;
       if (params == null) {
         params = {};
       }
@@ -95,34 +103,24 @@
         return;
       }
       'time = new Date().getTime()\nif time - @commTokenTTL > @TOKEN_TTL * 1000\n	@getCommToken ->\n		self.request method, params, secure, callback \n	return';
-      if (method === 'getStreamKeyFromSongIDEx') {
-        agent = 'jsqueue';
-      } else {
-        agent = this.CLIENT;
-      }
+      client = (method === 'getStreamKeyFromSongIDEx' ? 'jsqueue' : void 0) || this.CLIENT;
       path = '/more.php?' + method;
       body = {
         header: {
           session: this.session,
           uuid: this.UUID,
-          client: agent,
+          client: client,
           clientRevision: this.CLIENT_REV,
           country: this.COUNTRY
         },
         method: method,
         parameters: params
       };
-      console.log(this.commToken);
       if (this.commToken !== null) {
         body.header.token = this.createToken(method);
       }
       postData = JSON.stringify(body);
-      console.log(postData);
-      console.log(agent);
-      port = 80;
-      if (secure) {
-        port = 443;
-      }
+      port = (secure ? 443 : void 0) || 80;
       options = {
         host: this.API_BASE,
         path: path,

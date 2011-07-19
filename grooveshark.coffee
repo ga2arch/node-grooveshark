@@ -8,10 +8,13 @@ class Grooveshark extends events.EventEmitter
 		@API_BASE = 'grooveshark.com'
 		@UUID = 'A3B724BA-14F5-4932-98B8-8D375F85F266'
 		@CLIENT = 'htmlshark'
-		@CLIENT_REV = '20110606.04'
+		@CLIENT_REV = '20110606'
 		@COUNTRY = CC2: '0', IPR: '353', CC4: '1073741824', CC3: '0', CC1: '0', ID: '223'
 		@TOKEN_TTL = 120
+		@SALT = 'backToTheScienceLab'
 		@METHOD_CLIENTS = getStreamKeyFromSongIDEx: 'jsqueue'
+		@METHOD_SALTS = getStreamKeyFromSongIDEx: 'bewareOfBearsharktopus'
+		@METHOD_CLIENT_REVS = getStreamKeyFromSongIDEx: '20110606.04'
 		@session = null
 		@commToken = null
 		
@@ -25,8 +28,7 @@ class Grooveshark extends events.EventEmitter
 	
 	getCommToken: (callback) ->
 		self = @
-		@secretKey = Hash.md5 @session
-		params = secretKey: @secretKey
+		params = secretKey: Hash.md5 @session
 		@request 'getCommunicationToken', params, true, (data) ->
 			self.commToken = data.result
 			self.commTokenTTL = new Date().getTime()
@@ -34,8 +36,8 @@ class Grooveshark extends events.EventEmitter
 	
 	createToken: (method) ->
 		rnd = @genHex()
-		plain = method+':'+@commToken+':'+'bewareOfBearsharktopus'+':'+rnd
-		console.log plain
+		salt = @METHOD_SALTS[method] if @METHOD_SALTS[method] || @SALT
+		plain = method+':'+@commToken+':'+salt+':'+rnd
 		hash = Hash.sha1 plain
 		rnd+hash
 		
@@ -60,21 +62,14 @@ class Grooveshark extends events.EventEmitter
 				self.request method, params, secure, callback 
 			return'''
 		
-		if method is 'getStreamKeyFromSongIDEx'
-			agent = 'jsqueue'
-		else
-			agent = @CLIENT
+		client = ( 'jsqueue' if method is 'getStreamKeyFromSongIDEx' ) || @CLIENT
 			
 		path = '/more.php?'+method
-		body = header: { session: @session, uuid: @UUID, client: agent, clientRevision: @CLIENT_REV, country: @COUNTRY }, method: method, parameters: params
-		console.log @commToken
+		body = header: { session: @session, uuid: @UUID, client: client, clientRevision: @CLIENT_REV, country: @COUNTRY }, method: method, parameters: params
 		body.header.token = @createToken method if @commToken isnt null
 		postData = JSON.stringify body
 		
-		console.log postData
-		console.log agent
-		port = 80
-		port = 443 if secure
+		port = ( 443 if secure ) || 80
 		
 		options = host: @API_BASE, path: path, port: port, method: 'POST', headers: {
 		          	'Content-Type': 'application/json',
