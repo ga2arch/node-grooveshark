@@ -8,11 +8,12 @@ class Grooveshark extends events.EventEmitter
 		@API_BASE = 'grooveshark.com'
 		@UUID = 'A3B724BA-14F5-4932-98B8-8D375F85F266'
 		@CLIENT = 'htmlshark'
-		@CLIENT_REV = '20110606'
+		@CLIENT_REV = '20110606.04'
 		@COUNTRY = CC2: '0', IPR: '353', CC4: '1073741824', CC3: '0', CC1: '0', ID: '223'
 		@TOKEN_TTL = 120
 		@METHOD_CLIENTS = getStreamKeyFromSongIDEx: 'jsqueue'
 		@session = null
+		@commToken = null
 		
 	getSession: (callback) ->
 		self = @
@@ -24,43 +25,41 @@ class Grooveshark extends events.EventEmitter
 	
 	getCommToken: (callback) ->
 		self = @
-		params = secretKey: Hash.md5 @session
+		@secretKey = Hash.md5 @session
+		params = secretKey: @secretKey
 		@request 'getCommunicationToken', params, true, (data) ->
-			@commToken = JSON.parse(data).result
-			@commTokenTTL = new Date().getTime()
+			self.commToken = data.result
+			self.commTokenTTL = new Date().getTime()
+			callback()
 	
-	refreshToken: (callback) ->
-		time = new Date().getTime()
-		if time - @commTokenTTL > @TOKEN_TTL
-			@getCommToken callback
-	
-	createToken: (method, commToken) ->
+	createToken: (method) ->
 		rnd = @genHex()
-		plain = method+':'+commToken+':'+'quitStealinMahShit'+rnd
+		plain = method+':'+@commToken+':'+'bewareOfBearsharktopus'+':'+rnd
+		console.log plain
 		hash = Hash.sha1 plain
 		rnd+hash
 		
-	genHex: (size=6) ->
-		items = 'abcdef'
+	genHex: ->
 		item = ''
-		for n in [1..size]
-			ran = Math.round Math.random()*14
-			if ran > 9
-				item += items[ran - 9]
-			else 
-				item += ran
+		i = 0
+		while i < 6
+			item += Math.floor(Math.random() * 16).toString(16)
+			i++
 		item
 		
 	request: (method, params={}, secure=false, callback) ->
-		console.log @session
+		self = @
 		if @session is null
 			@getSession ->
-				@request method, params, secure, callback
+				self.request method, params, secure, callback
+			return
 		
-		@refreshToken ->
-			@request method, params, secure, callback
+		'''time = new Date().getTime()
+		if time - @commTokenTTL > @TOKEN_TTL * 1000
+			@getCommToken ->
+				self.request method, params, secure, callback 
+			return'''
 		
-		self = @		
 		if method is 'getStreamKeyFromSongIDEx'
 			agent = 'jsqueue'
 		else
@@ -68,10 +67,12 @@ class Grooveshark extends events.EventEmitter
 			
 		path = '/more.php?'+method
 		body = header: { session: @session, uuid: @UUID, client: agent, clientRevision: @CLIENT_REV, country: @COUNTRY }, method: method, parameters: params
+		console.log @commToken
 		body.header.token = @createToken method if @commToken isnt null
 		postData = JSON.stringify body
 		
 		console.log postData
+		console.log agent
 		port = 80
 		port = 443 if secure
 		
@@ -84,13 +85,22 @@ class Grooveshark extends events.EventEmitter
 		h = http.request
 		if secure
 			h = https.request
+			
 		req = h options, (res) ->
 			data = ''
 			res.setEncoding 'utf-8'
 			res.on 'data', (chuck) ->
 				data += chuck
+				
 			res.on 'end', ->
+				data = JSON.parse data
+				if data.fault isnt undefined
+					throw data.fault.message
 				callback data
+		
+		req.on 'error', (e) ->
+			console.log e.message
+		
 		req.write postData
 		req.end()			
 				

@@ -17,7 +17,7 @@
       this.API_BASE = 'grooveshark.com';
       this.UUID = 'A3B724BA-14F5-4932-98B8-8D375F85F266';
       this.CLIENT = 'htmlshark';
-      this.CLIENT_REV = '20110606';
+      this.CLIENT_REV = '20110606.04';
       this.COUNTRY = {
         CC2: '0',
         IPR: '353',
@@ -31,6 +31,7 @@
         getStreamKeyFromSongIDEx: 'jsqueue'
       };
       this.session = null;
+      this.commToken = null;
     }
     Grooveshark.prototype.getSession = function(callback) {
       var options, self;
@@ -50,42 +51,31 @@
     Grooveshark.prototype.getCommToken = function(callback) {
       var params, self;
       self = this;
+      this.secretKey = Hash.md5(this.session);
       params = {
-        secretKey: Hash.md5(this.session)
+        secretKey: this.secretKey
       };
       return this.request('getCommunicationToken', params, true, function(data) {
-        this.commToken = JSON.parse(data).result;
-        return this.commTokenTTL = new Date().getTime();
+        self.commToken = data.result;
+        self.commTokenTTL = new Date().getTime();
+        return callback();
       });
     };
-    Grooveshark.prototype.refreshToken = function(callback) {
-      var time;
-      time = new Date().getTime();
-      if (time - this.commTokenTTL > this.TOKEN_TTL) {
-        return this.getCommToken(callback);
-      }
-    };
-    Grooveshark.prototype.createToken = function(method, commToken) {
+    Grooveshark.prototype.createToken = function(method) {
       var hash, plain, rnd;
       rnd = this.genHex();
-      plain = method + ':' + commToken + ':' + 'quitStealinMahShit' + rnd;
+      plain = method + ':' + this.commToken + ':' + 'bewareOfBearsharktopus' + ':' + rnd;
+      console.log(plain);
       hash = Hash.sha1(plain);
       return rnd + hash;
     };
-    Grooveshark.prototype.genHex = function(size) {
-      var item, items, n, ran;
-      if (size == null) {
-        size = 6;
-      }
-      items = 'abcdef';
+    Grooveshark.prototype.genHex = function() {
+      var i, item;
       item = '';
-      for (n = 1; 1 <= size ? n <= size : n >= size; 1 <= size ? n++ : n--) {
-        ran = Math.round(Math.random() * 14);
-        if (ran > 9) {
-          item += items[ran - 9];
-        } else {
-          item += ran;
-        }
+      i = 0;
+      while (i < 6) {
+        item += Math.floor(Math.random() * 16).toString(16);
+        i++;
       }
       return item;
     };
@@ -97,16 +87,14 @@
       if (secure == null) {
         secure = false;
       }
-      console.log(this.session);
+      self = this;
       if (this.session === null) {
         this.getSession(function() {
-          return this.request(method, params, secure, callback);
+          return self.request(method, params, secure, callback);
         });
+        return;
       }
-      this.refreshToken(function() {
-        return this.request(method, params, secure, callback);
-      });
-      self = this;
+      'time = new Date().getTime()\nif time - @commTokenTTL > @TOKEN_TTL * 1000\n	@getCommToken ->\n		self.request method, params, secure, callback \n	return';
       if (method === 'getStreamKeyFromSongIDEx') {
         agent = 'jsqueue';
       } else {
@@ -124,11 +112,13 @@
         method: method,
         parameters: params
       };
+      console.log(this.commToken);
       if (this.commToken !== null) {
         body.header.token = this.createToken(method);
       }
       postData = JSON.stringify(body);
       console.log(postData);
+      console.log(agent);
       port = 80;
       if (secure) {
         port = 443;
@@ -156,8 +146,15 @@
           return data += chuck;
         });
         return res.on('end', function() {
+          data = JSON.parse(data);
+          if (data.fault !== void 0) {
+            throw data.fault.message;
+          }
           return callback(data);
         });
+      });
+      req.on('error', function(e) {
+        return console.log(e.message);
       });
       req.write(postData);
       return req.end();
