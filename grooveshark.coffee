@@ -59,11 +59,12 @@ class Grooveshark
 				self.request method, params, secure, callback
 			return
 		
-		'''time = new Date().getTime()
-		if time - @commTokenTTL > @TOKEN_TTL * 1000
+		time = new Date().getTime()
+		if method isnt 'getCommunicationToken' && (time - @commTokenTTL) >= (@TOKEN_TTL * 1000)
+			console.log 'Renewing commtoken'
 			@getCommToken ->
 				self.request method, params, secure, callback 
-			return'''
+			return
 		
 		client = @METHOD_CLIENTS[method] || @CLIENT
 			

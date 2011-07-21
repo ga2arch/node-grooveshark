@@ -81,7 +81,7 @@
       return item;
     };
     Grooveshark.prototype.request = function(method, params, secure, callback) {
-      var body, client, h, options, path, port, postData, req, self;
+      var body, client, h, options, path, port, postData, req, self, time;
       if (params == null) {
         params = {};
       }
@@ -95,7 +95,14 @@
         });
         return;
       }
-      'time = new Date().getTime()\nif time - @commTokenTTL > @TOKEN_TTL * 1000\n	@getCommToken ->\n		self.request method, params, secure, callback \n	return';
+      time = new Date().getTime();
+      if (method !== 'getCommunicationToken' && (time - this.commTokenTTL) >= (this.TOKEN_TTL * 1000)) {
+        console.log('Renewing commtoken');
+        this.getCommToken(function() {
+          return self.request(method, params, secure, callback);
+        });
+        return;
+      }
       client = this.METHOD_CLIENTS[method] || this.CLIENT;
       path = '/more.php?' + method;
       body = {
