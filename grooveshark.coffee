@@ -1,9 +1,11 @@
-events = require 'events'
+require 'joose'
+require 'joosex-namespace-depended'
+require 'hash'
+
 http = require 'http'
 https = require 'https'
 
-
-class Grooveshark extends events.EventEmitter
+class Grooveshark
 	constructor: ->
 		@API_BASE = 'grooveshark.com'
 		@UUID = 'A3B724BA-14F5-4932-98B8-8D375F85F266'
@@ -18,6 +20,7 @@ class Grooveshark extends events.EventEmitter
 		@session = null
 		@commToken = null
 		
+		
 	getSession: (callback) ->
 		self = @
 		options = host: 'grooveshark.com', port: 80, path: '/'
@@ -30,7 +33,7 @@ class Grooveshark extends events.EventEmitter
 		self = @
 		params = secretKey: Hash.md5 @session
 		@request 'getCommunicationToken', params, true, (data) ->
-			self.commToken = data.result
+			self.commToken = data
 			self.commTokenTTL = new Date().getTime()
 			callback()
 	
@@ -62,7 +65,7 @@ class Grooveshark extends events.EventEmitter
 				self.request method, params, secure, callback 
 			return'''
 		
-		client = ( 'jsqueue' if method is 'getStreamKeyFromSongIDEx' ) || @CLIENT
+		client = @METHOD_CLIENTS[method] || @CLIENT
 			
 		path = '/more.php?'+method
 		body = header: { session: @session, uuid: @UUID, client: client, clientRevision: @CLIENT_REV, country: @COUNTRY }, method: method, parameters: params
@@ -91,7 +94,7 @@ class Grooveshark extends events.EventEmitter
 				data = JSON.parse data
 				if data.fault isnt undefined
 					throw data.fault.message
-				callback data
+				callback data.result
 		
 		req.on 'error', (e) ->
 			console.log e.message

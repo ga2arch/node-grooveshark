@@ -1,18 +1,11 @@
 (function() {
-  var Grooveshark, events, http, https;
-  var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
-    for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
-    function ctor() { this.constructor = child; }
-    ctor.prototype = parent.prototype;
-    child.prototype = new ctor;
-    child.__super__ = parent.prototype;
-    return child;
-  };
-  events = require('events');
+  var Grooveshark, http, https;
+  require('joose');
+  require('joosex-namespace-depended');
+  require('hash');
   http = require('http');
   https = require('https');
   Grooveshark = (function() {
-    __extends(Grooveshark, events.EventEmitter);
     function Grooveshark() {
       this.API_BASE = 'grooveshark.com';
       this.UUID = 'A3B724BA-14F5-4932-98B8-8D375F85F266';
@@ -62,7 +55,7 @@
         secretKey: Hash.md5(this.session)
       };
       return this.request('getCommunicationToken', params, true, function(data) {
-        self.commToken = data.result;
+        self.commToken = data;
         self.commTokenTTL = new Date().getTime();
         return callback();
       });
@@ -103,7 +96,7 @@
         return;
       }
       'time = new Date().getTime()\nif time - @commTokenTTL > @TOKEN_TTL * 1000\n	@getCommToken ->\n		self.request method, params, secure, callback \n	return';
-      client = (method === 'getStreamKeyFromSongIDEx' ? 'jsqueue' : void 0) || this.CLIENT;
+      client = this.METHOD_CLIENTS[method] || this.CLIENT;
       path = '/more.php?' + method;
       body = {
         header: {
@@ -148,7 +141,7 @@
           if (data.fault !== void 0) {
             throw data.fault.message;
           }
-          return callback(data);
+          return callback(data.result);
         });
       });
       req.on('error', function(e) {
