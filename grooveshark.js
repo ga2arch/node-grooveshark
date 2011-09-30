@@ -158,5 +158,5 @@
     };
     return Grooveshark;
   })();
-  module.exports = Grooveshark;
+  exports.Grooveshark = Grooveshark;
 }).call(this);

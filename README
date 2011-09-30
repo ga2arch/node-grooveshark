@@ -1,2 +1,2 @@
 # REQUIRES
-npm install joose joosex-namespace-depended underscore
+npm install underscore
