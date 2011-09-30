@@ -1,6 +1,3 @@
-require 'joose'
-require 'joosex-namespace-depended'
-
 crypto = require 'crypto'
 http = require 'http'
 https = require 'https'
