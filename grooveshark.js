@@ -1,8 +1,8 @@
 (function() {
-  var Grooveshark, http, https;
+  var Grooveshark, crypto, http, https;
   require('joose');
   require('joosex-namespace-depended');
-  require('hash');
+  crypto = require('crypto');
   http = require('http');
   https = require('https');
   Grooveshark = (function() {
@@ -49,10 +49,11 @@
       });
     };
     Grooveshark.prototype.getCommToken = function(callback) {
-      var params, self;
+      var md5sum, params, self;
       self = this;
+      md5sum = crypto.createHash('md5');
       params = {
-        secretKey: Hash.md5(this.session)
+        secretKey: md5sum.update(this.session).digest('hex')
       };
       return this.request('getCommunicationToken', params, true, function(data) {
         self.commToken = data;
@@ -61,14 +62,15 @@
       });
     };
     Grooveshark.prototype.createToken = function(method) {
-      var hash, plain, rnd, salt;
+      var hash, hashed, plain, rnd, salt;
       rnd = this.genHex();
       if (this.METHOD_SALTS[method] || this.SALT) {
         salt = this.METHOD_SALTS[method];
       }
       plain = method + ':' + this.commToken + ':' + salt + ':' + rnd;
-      hash = Hash.sha1(plain);
-      return rnd + hash;
+      hash = crypto.createHash('sha1');
+      hashed = hash.update(plain).digest('hex');
+      return rnd + hashed;
     };
     Grooveshark.prototype.genHex = function() {
       var i, item;

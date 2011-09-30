@@ -1,7 +1,7 @@
 require 'joose'
 require 'joosex-namespace-depended'
-require 'hash'
 
+crypto = require 'crypto'
 http = require 'http'
 https = require 'https'
 
@@ -31,7 +31,8 @@ class Grooveshark
 	
 	getCommToken: (callback) ->
 		self = @
-		params = secretKey: Hash.md5 @session
+		md5sum = crypto.createHash 'md5'
+		params = secretKey: md5sum.update(@session).digest 'hex'
 		@request 'getCommunicationToken', params, true, (data) ->
 			self.commToken = data
 			self.commTokenTTL = new Date().getTime()
@@ -41,8 +42,10 @@ class Grooveshark
 		rnd = @genHex()
 		salt = @METHOD_SALTS[method] if @METHOD_SALTS[method] || @SALT
 		plain = method+':'+@commToken+':'+salt+':'+rnd
-		hash = Hash.sha1 plain
-		rnd+hash
+		#hash = Hash.sha1 plain
+		hash = crypto.createHash 'sha1'
+		hashed = hash.update(plain).digest 'hex'
+		rnd+hashed
 		
 	genHex: ->
 		item = ''
