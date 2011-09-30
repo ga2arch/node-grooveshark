@@ -61,7 +61,6 @@ class Grooveshark
 		
 		time = new Date().getTime()
 		if method isnt 'getCommunicationToken' && (time - @commTokenTTL) >= (@TOKEN_TTL * 1000)
-			console.log 'Renewing commtoken'
 			@getCommToken ->
 				self.request method, params, secure, callback 
 			return
@@ -78,7 +77,7 @@ class Grooveshark
 		options = host: @API_BASE, path: path, port: port, method: 'POST', headers: {
 		          	'Content-Type': 'application/json',
 					'Content-Length': postData.length,
-					'Cookie': 'PHPSESSID='+@session
+					'Cookie': 'PHPSESSID='+@session,
 		          }
 
 		h = http.request

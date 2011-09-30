@@ -97,7 +97,6 @@
       }
       time = new Date().getTime();
       if (method !== 'getCommunicationToken' && (time - this.commTokenTTL) >= (this.TOKEN_TTL * 1000)) {
-        console.log('Renewing commtoken');
         this.getCommToken(function() {
           return self.request(method, params, secure, callback);
         });

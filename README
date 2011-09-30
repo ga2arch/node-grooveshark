@@ -1,0 +1,2 @@
+# REQUIRES
+npm install hash joose joosex-namespace-depended underscore
